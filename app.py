@@ -133,13 +133,11 @@ def train_basic_models():
         X = expanded_data[feature_cols]
         y = expanded_data['isFraud']
         
+        X = X.select_dtypes(include=[np.number])
+        
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
-        numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
-        preprocessor = ColumnTransformer(
-            transformers=[('num', StandardScaler(), numeric_features)],
-            remainder='passthrough'
-        )
+        preprocessor = StandardScaler()
         
         models = {}
         
@@ -186,13 +184,15 @@ def engineer_features(df):
     df = df.copy()
     
     if 'type' in df.columns:
-        df['type'] = df['type'].astype('string').str.replace('-', '_').astype('category')
+        df['is_TRANSFER'] = (df['type'] == 'TRANSFER').astype('int8')
+        df['is_CASH_OUT'] = (df['type'] == 'CASH_OUT').astype('int8')
+        df['is_PAYMENT'] = (df['type'] == 'PAYMENT').astype('int8')
+        df['is_DEBIT'] = (df['type'] == 'DEBIT').astype('int8')
+        df['is_CASH_IN'] = (df['type'] == 'CASH_IN').astype('int8')
+        df = df.drop('type', axis=1)
     
     df['orig_error'] = (df['newbalanceOrig'] + df['amount'] - df['oldbalanceOrg']).astype('float32')
     df['dest_error'] = (df['oldbalanceDest'] + df['amount'] - df['newbalanceDest']).astype('float32')
-    
-    df['is_TRANSFER'] = (df['type'] == 'TRANSFER').astype('int8')
-    df['is_CASH_OUT'] = (df['type'] == 'CASH_OUT').astype('int8')
     
     df['amt_log'] = np.log1p(df['amount']).astype('float32')
     df['is_high_value'] = (df['amount'] >= 200_000).astype('int8')
@@ -203,8 +203,12 @@ def engineer_features(df):
     
     if 'nameDest' in df.columns:
         df['dest_is_merchant'] = df['nameDest'].astype('string').str.startswith('M').fillna(False).astype('int8')
+        df = df.drop('nameDest', axis=1)
     else:
         df['dest_is_merchant'] = 0
+    
+    if 'nameOrig' in df.columns:
+        df = df.drop('nameOrig', axis=1)
     
     df['orig_went_zero'] = ((df['newbalanceOrig'] == 0) & (df['oldbalanceOrg'] > 0)).astype('int8')
     df['dest_went_zero'] = ((df['newbalanceDest'] == 0) & (df['oldbalanceDest'] > 0)).astype('int8')
@@ -292,6 +296,8 @@ def predict_fraud(models, df, threshold_lr=0.5, threshold_xgb=0.5):
     
     feature_cols = [c for c in df.columns if c not in ['nameOrig', 'nameDest', 'isFraud']]
     X = df[feature_cols]
+    
+    X = X.select_dtypes(include=[np.number])
     
     for model_name, model in models.items():
         try:
