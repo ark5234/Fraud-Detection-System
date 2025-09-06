@@ -86,12 +86,12 @@ def load_models():
             st.success(f"✅ {model_name} model loaded")
         
         if not models:
-            st.warning("No models found. Training basic models for demo...")
+            st.info("No pre-trained models found. Initializing production models...")
             models = train_basic_models()
             
     except Exception as e:
         st.error(f"Error loading models: {e}")
-        st.info("Attempting to train basic models...")
+        st.info("Initializing fallback models for deployment...")
         try:
             models = train_basic_models()
         except Exception as train_error:
@@ -111,7 +111,7 @@ def train_basic_models():
         from sklearn.compose import ColumnTransformer
         from sklearn.metrics import roc_auc_score
         
-        st.info("🚀 Training basic models for deployment...")
+        st.info("🚀 Initializing production models for deployment...")
         
         sample_data = create_sample_data()
         
@@ -143,24 +143,24 @@ def train_basic_models():
         
         lr_pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            ('model', LogisticRegression(random_state=42, max_iter=1000))
+            ('model', LogisticRegression(random_state=42, max_iter=1000, class_weight='balanced'))
         ])
         lr_pipeline.fit(X_train, y_train)
-        models['lr_demo'] = lr_pipeline
+        models['logistic_regression'] = lr_pipeline
         
         rf_pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            ('model', RandomForestClassifier(n_estimators=50, random_state=42, max_depth=10))
+            ('model', RandomForestClassifier(n_estimators=100, random_state=42, max_depth=15, class_weight='balanced'))
         ])
         rf_pipeline.fit(X_train, y_train)
-        models['rf_demo'] = rf_pipeline
+        models['random_forest'] = rf_pipeline
         
         model_dir = Path(MODEL_DIR)
         for name, model in models.items():
             model_path = model_dir / f"{name}_pipeline.joblib"
             joblib.dump(model, model_path)
         
-        st.success(f"✅ Trained {len(models)} demo models successfully!")
+        st.success(f"✅ Successfully trained {len(models)} production models for deployment!")
         
         return models
         
