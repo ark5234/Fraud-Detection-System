@@ -64,13 +64,26 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+@st.cache_resource
 def load_models():
-    """Load trained models"""
+    """Load trained models, with fallback to train if not available"""
     models = {}
     model_dir = Path(MODEL_DIR)
     
-    # Try to load models
+    # Create models directory if it doesn't exist
+    model_dir.mkdir(exist_ok=True)
+    
     try:
+        # Try to load existing models
+        model_files_found = False
+        
+        # Look for any existing model files
+        all_model_files = list(model_dir.glob("*.joblib"))
+        if all_model_files:
+            st.info(f"Found {len(all_model_files)} model files")
+            model_files_found = True
+        
+        # Try to load specific models
         if (model_dir / "xgb_pipeline.joblib").exists():
             models['xgb'] = joblib.load(model_dir / "xgb_pipeline.joblib")
             st.success("✅ XGBoost model loaded")
@@ -79,23 +92,117 @@ def load_models():
             models['xgb_cal'] = joblib.load(model_dir / "xgb_pipeline_calibrated.joblib")
             st.success("✅ Calibrated XGBoost model loaded")
             
-        # Look for LR model (pattern match)
+        # Look for new pattern models
         lr_files = list(model_dir.glob("*logistic_regression*.joblib"))
         if lr_files:
             models['lr'] = joblib.load(lr_files[0])
             st.success("✅ Logistic Regression model loaded")
         
-        # Look for new calibrated models
+        # Look for calibrated models
         cal_files = list(model_dir.glob("calibrated_*.joblib"))
-        for cal_file in cal_files:
+        for cal_file in cal_files[:3]:  # Limit to 3 calibrated models
             model_name = cal_file.stem
             models[model_name] = joblib.load(cal_file)
             st.success(f"✅ {model_name} model loaded")
+        
+        # If no models found, try to train basic models
+        if not models:
+            st.warning("No models found. Training basic models for demo...")
+            models = train_basic_models()
             
     except Exception as e:
         st.error(f"Error loading models: {e}")
+        # Fallback: try to train basic models
+        st.info("Attempting to train basic models...")
+        try:
+            models = train_basic_models()
+        except Exception as train_error:
+            st.error(f"Training also failed: {train_error}")
+            st.error("Please check the data files and model directory.")
     
     return models
+
+@st.cache_resource
+def train_basic_models():
+    """Train basic models if none are available (for deployment)"""
+    try:
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.model_selection import train_test_split
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.pipeline import Pipeline
+        from sklearn.compose import ColumnTransformer
+        from sklearn.metrics import roc_auc_score
+        
+        st.info("🚀 Training basic models for deployment...")
+        
+        # Load sample data or create synthetic data
+        sample_data = create_sample_data()
+        
+        # Expand sample data for training
+        expanded_data = pd.concat([sample_data] * 1000, ignore_index=True)
+        
+        # Add some noise and variety
+        np.random.seed(42)
+        expanded_data['amount'] = expanded_data['amount'] * (1 + np.random.normal(0, 0.1, len(expanded_data)))
+        expanded_data['oldbalanceOrg'] = expanded_data['oldbalanceOrg'] * (1 + np.random.normal(0, 0.1, len(expanded_data)))
+        
+        # Create labels based on rules (for demo)
+        expanded_data['isFraud'] = (
+            (expanded_data['type'].isin(['TRANSFER', 'CASH_OUT'])) &
+            (expanded_data['amount'] > 100000) |
+            (expanded_data['isFlaggedFraud'] == 1)
+        ).astype(int)
+        
+        # Feature engineering
+        expanded_data = engineer_features(expanded_data)
+        
+        # Prepare features
+        feature_cols = [c for c in expanded_data.columns if c not in ['isFraud']]
+        X = expanded_data[feature_cols]
+        y = expanded_data['isFraud']
+        
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        
+        # Create preprocessor
+        numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
+        preprocessor = ColumnTransformer(
+            transformers=[('num', StandardScaler(), numeric_features)],
+            remainder='passthrough'
+        )
+        
+        models = {}
+        
+        # Train Logistic Regression
+        lr_pipeline = Pipeline([
+            ('preprocessor', preprocessor),
+            ('model', LogisticRegression(random_state=42, max_iter=1000))
+        ])
+        lr_pipeline.fit(X_train, y_train)
+        models['lr_demo'] = lr_pipeline
+        
+        # Train Random Forest
+        rf_pipeline = Pipeline([
+            ('preprocessor', preprocessor),
+            ('model', RandomForestClassifier(n_estimators=50, random_state=42, max_depth=10))
+        ])
+        rf_pipeline.fit(X_train, y_train)
+        models['rf_demo'] = rf_pipeline
+        
+        # Save models
+        model_dir = Path(MODEL_DIR)
+        for name, model in models.items():
+            model_path = model_dir / f"{name}_pipeline.joblib"
+            joblib.dump(model, model_path)
+        
+        st.success(f"✅ Trained {len(models)} demo models successfully!")
+        
+        return models
+        
+    except Exception as e:
+        st.error(f"Failed to train basic models: {e}")
+        return {}
 
 def create_sample_data():
     """Create sample transaction data"""

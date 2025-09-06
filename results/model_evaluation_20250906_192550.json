@@ -1,0 +1,11 @@
+{
+  "logistic_regression": {
+    "roc_auc": 0.9990305555555556
+  },
+  "random_forest": {
+    "roc_auc": 0.9986791666666668
+  },
+  "xgboost": {
+    "roc_auc": 0.9998298611111112
+  }
+}
