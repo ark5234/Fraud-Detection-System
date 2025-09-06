@@ -1,8 +1,3 @@
-"""
-Quick Model Training Script for Fraud Detection System
-Optimized for faster training with essential models only
-"""
-
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -13,7 +8,6 @@ from pathlib import Path
 from datetime import datetime
 import json
 
-# Core ML imports
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.pipeline import Pipeline
@@ -24,27 +18,21 @@ from sklearn.metrics import (
     roc_curve, precision_score, recall_score
 )
 
-# Essential models only
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 import xgboost as xgb
 
-# Calibration
 from sklearn.calibration import CalibratedClassifierCV
 
 class QuickFraudTrainer:
-    """Quick training for essential fraud detection models"""
-    
     def __init__(self, data_path="data/raw/Fraud.csv", model_dir="models", results_dir="results"):
         self.data_path = Path(data_path)
         self.model_dir = Path(model_dir)
         self.results_dir = Path(results_dir)
         
-        # Create directories
         self.model_dir.mkdir(exist_ok=True)
         self.results_dir.mkdir(exist_ok=True)
         
-        # Essential models with reduced hyperparameter search
         self.models_config = {
             'logistic_regression': {
                 'model': LogisticRegression(max_iter=1000, random_state=42),
@@ -76,28 +64,21 @@ class QuickFraudTrainer:
         self.model_scores = {}
     
     def load_and_preprocess_data(self, sample_size=None):
-        """Load and preprocess data with optional sampling for speed"""
         print("Loading and preprocessing data...")
         
-        # Load data
         df = pd.read_csv(self.data_path)
         print(f"Loaded dataset with shape: {df.shape}")
         
-        # Optional sampling for faster training
         if sample_size and len(df) > sample_size:
-            # Stratified sampling to maintain class balance
             fraud_samples = df[df['isFraud'] == 1].sample(n=min(sample_size//10, len(df[df['isFraud'] == 1])), random_state=42)
             normal_samples = df[df['isFraud'] == 0].sample(n=sample_size - len(fraud_samples), random_state=42)
             df = pd.concat([fraud_samples, normal_samples]).reset_index(drop=True)
             print(f"Sampled to {df.shape[0]} rows for faster training")
         
-        # Basic preprocessing
         df = df.dropna()
         
-        # Feature engineering
         df_processed = self.engineer_features(df)
         
-        # Separate features and target
         target_col = 'isFraud'
         X = df_processed.drop(columns=[target_col])
         y = df_processed[target_col]
@@ -108,31 +89,25 @@ class QuickFraudTrainer:
         return X, y
     
     def engineer_features(self, df):
-        """Essential feature engineering"""
         df_fe = df.copy()
         
-        # Remove string columns that shouldn't be used as features
         columns_to_drop = ['nameOrig', 'nameDest']
         for col in columns_to_drop:
             if col in df_fe.columns:
                 df_fe = df_fe.drop(columns=[col])
         
-        # Transaction type encoding
         if 'type' in df_fe.columns:
             df_fe = pd.get_dummies(df_fe, columns=['type'], prefix='type')
         
-        # Amount features
         if 'amount' in df_fe.columns:
             df_fe['amount_log'] = np.log1p(df_fe['amount'])
             df_fe['is_high_value'] = (df_fe['amount'] >= 200000).astype(int)
         
-        # Balance features
         balance_cols = ['oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest']
         for col in balance_cols:
             if col in df_fe.columns:
                 df_fe[f'{col}_log'] = np.log1p(df_fe[col])
         
-        # Balance difference and error features
         if all(col in df_fe.columns for col in ['oldbalanceOrg', 'newbalanceOrig', 'amount']):
             df_fe['balance_diff_orig'] = df_fe['newbalanceOrig'] - df_fe['oldbalanceOrg']
             df_fe['error_orig'] = (df_fe['newbalanceOrig'] + df_fe['amount'] != df_fe['oldbalanceOrg']).astype(int)
@@ -144,7 +119,6 @@ class QuickFraudTrainer:
         return df_fe
     
     def create_preprocessing_pipeline(self, X):
-        """Create preprocessing pipeline"""
         numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
         
         preprocessor = ColumnTransformer(
@@ -155,7 +129,6 @@ class QuickFraudTrainer:
         return preprocessor
     
     def train_model(self, model_name, X_train, y_train, cv_folds=3):
-        """Train a single model with reduced CV for speed"""
         print(f"Training {model_name}...")
         
         config = self.models_config[model_name]
@@ -178,7 +151,6 @@ class QuickFraudTrainer:
         return grid_search.best_estimator_
     
     def train_all_models(self, X_train, y_train):
-        """Train all essential models"""
         print("=" * 60)
         print("TRAINING ESSENTIAL MODELS")
         print("=" * 60)
@@ -192,14 +164,12 @@ class QuickFraudTrainer:
                 print(f"❌ Error training {model_name}: {str(e)}")
     
     def apply_calibration(self, X_train, y_train):
-        """Apply calibration to models"""
         print("Applying calibration...")
         
         calibrated_models = {}
         
         for name, model in self.trained_models.items():
             try:
-                # Only Platt scaling for speed
                 calibrated = CalibratedClassifierCV(model, method='sigmoid', cv=3)
                 calibrated.fit(X_train, y_train)
                 calibrated_models[f'calibrated_{name}'] = calibrated

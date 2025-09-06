@@ -1,8 +1,3 @@
-"""
-Fraud Detection Web App
-A Streamlit application for predicting fraudulent financial transactions
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -14,17 +9,14 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
-# Import project configuration
 try:
     from config import *
 except ImportError:
-    # Fallback values if config not available
     RAW_DATA_PATH = "data/raw/Fraud.csv"
     MODEL_DIR = "models"
     PAGE_TITLE = "Fraud Detection System"
     PAGE_ICON = "🛡️"
 
-# Page config
 st.set_page_config(
     page_title=PAGE_TITLE,
     page_icon=PAGE_ICON,
@@ -32,7 +24,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
 st.markdown("""
 <style>
     .main-header {
@@ -66,24 +57,15 @@ st.markdown("""
 
 @st.cache_resource
 def load_models():
-    """Load trained models, with fallback to train if not available"""
     models = {}
     model_dir = Path(MODEL_DIR)
-    
-    # Create models directory if it doesn't exist
     model_dir.mkdir(exist_ok=True)
     
     try:
-        # Try to load existing models
-        model_files_found = False
-        
-        # Look for any existing model files
         all_model_files = list(model_dir.glob("*.joblib"))
         if all_model_files:
             st.info(f"Found {len(all_model_files)} model files")
-            model_files_found = True
         
-        # Try to load specific models
         if (model_dir / "xgb_pipeline.joblib").exists():
             models['xgb'] = joblib.load(model_dir / "xgb_pipeline.joblib")
             st.success("✅ XGBoost model loaded")
@@ -92,27 +74,23 @@ def load_models():
             models['xgb_cal'] = joblib.load(model_dir / "xgb_pipeline_calibrated.joblib")
             st.success("✅ Calibrated XGBoost model loaded")
             
-        # Look for new pattern models
         lr_files = list(model_dir.glob("*logistic_regression*.joblib"))
         if lr_files:
             models['lr'] = joblib.load(lr_files[0])
             st.success("✅ Logistic Regression model loaded")
         
-        # Look for calibrated models
         cal_files = list(model_dir.glob("calibrated_*.joblib"))
-        for cal_file in cal_files[:3]:  # Limit to 3 calibrated models
+        for cal_file in cal_files[:3]:
             model_name = cal_file.stem
             models[model_name] = joblib.load(cal_file)
             st.success(f"✅ {model_name} model loaded")
         
-        # If no models found, try to train basic models
         if not models:
             st.warning("No models found. Training basic models for demo...")
             models = train_basic_models()
             
     except Exception as e:
         st.error(f"Error loading models: {e}")
-        # Fallback: try to train basic models
         st.info("Attempting to train basic models...")
         try:
             models = train_basic_models()
@@ -124,7 +102,6 @@ def load_models():
 
 @st.cache_resource
 def train_basic_models():
-    """Train basic models if none are available (for deployment)"""
     try:
         from sklearn.linear_model import LogisticRegression
         from sklearn.ensemble import RandomForestClassifier
@@ -136,36 +113,28 @@ def train_basic_models():
         
         st.info("🚀 Training basic models for deployment...")
         
-        # Load sample data or create synthetic data
         sample_data = create_sample_data()
         
-        # Expand sample data for training
         expanded_data = pd.concat([sample_data] * 1000, ignore_index=True)
         
-        # Add some noise and variety
         np.random.seed(42)
         expanded_data['amount'] = expanded_data['amount'] * (1 + np.random.normal(0, 0.1, len(expanded_data)))
         expanded_data['oldbalanceOrg'] = expanded_data['oldbalanceOrg'] * (1 + np.random.normal(0, 0.1, len(expanded_data)))
         
-        # Create labels based on rules (for demo)
         expanded_data['isFraud'] = (
             (expanded_data['type'].isin(['TRANSFER', 'CASH_OUT'])) &
             (expanded_data['amount'] > 100000) |
             (expanded_data['isFlaggedFraud'] == 1)
         ).astype(int)
         
-        # Feature engineering
         expanded_data = engineer_features(expanded_data)
         
-        # Prepare features
         feature_cols = [c for c in expanded_data.columns if c not in ['isFraud']]
         X = expanded_data[feature_cols]
         y = expanded_data['isFraud']
         
-        # Split data
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
-        # Create preprocessor
         numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
         preprocessor = ColumnTransformer(
             transformers=[('num', StandardScaler(), numeric_features)],
@@ -174,7 +143,6 @@ def train_basic_models():
         
         models = {}
         
-        # Train Logistic Regression
         lr_pipeline = Pipeline([
             ('preprocessor', preprocessor),
             ('model', LogisticRegression(random_state=42, max_iter=1000))
@@ -182,7 +150,6 @@ def train_basic_models():
         lr_pipeline.fit(X_train, y_train)
         models['lr_demo'] = lr_pipeline
         
-        # Train Random Forest
         rf_pipeline = Pipeline([
             ('preprocessor', preprocessor),
             ('model', RandomForestClassifier(n_estimators=50, random_state=42, max_depth=10))
@@ -190,7 +157,6 @@ def train_basic_models():
         rf_pipeline.fit(X_train, y_train)
         models['rf_demo'] = rf_pipeline
         
-        # Save models
         model_dir = Path(MODEL_DIR)
         for name, model in models.items():
             model_path = model_dir / f"{name}_pipeline.joblib"
@@ -205,7 +171,6 @@ def train_basic_models():
         return {}
 
 def create_sample_data():
-    """Create sample transaction data"""
     return pd.DataFrame({
         'step': [1, 5, 10, 15, 20],
         'type': ['PAYMENT', 'TRANSFER', 'CASH_OUT', 'DEBIT', 'PAYMENT'],
@@ -218,45 +183,35 @@ def create_sample_data():
     })
 
 def engineer_features(df):
-    """Apply the same feature engineering as in training"""
     df = df.copy()
     
-    # Transaction type normalization
     if 'type' in df.columns:
         df['type'] = df['type'].astype('string').str.replace('-', '_').astype('category')
     
-    # Accounting errors
     df['orig_error'] = (df['newbalanceOrig'] + df['amount'] - df['oldbalanceOrg']).astype('float32')
     df['dest_error'] = (df['oldbalanceDest'] + df['amount'] - df['newbalanceDest']).astype('float32')
     
-    # Transaction type flags
     df['is_TRANSFER'] = (df['type'] == 'TRANSFER').astype('int8')
     df['is_CASH_OUT'] = (df['type'] == 'CASH_OUT').astype('int8')
     
-    # Amount features
     df['amt_log'] = np.log1p(df['amount']).astype('float32')
     df['is_high_value'] = (df['amount'] >= 200_000).astype('int8')
     
-    # Time features
     df['hour'] = (df['step'] % 24).astype('int8')
     df['day'] = (df['step'] // 24).astype('int16')
     df['is_weekend'] = (df['day'] % 7 >= 5).astype('int8')
     
-    # Destination features (mock merchant detection)
     if 'nameDest' in df.columns:
         df['dest_is_merchant'] = df['nameDest'].astype('string').str.startswith('M').fillna(False).astype('int8')
     else:
-        # Default assumption for manual input
         df['dest_is_merchant'] = 0
     
-    # Balance transition flags
     df['orig_went_zero'] = ((df['newbalanceOrig'] == 0) & (df['oldbalanceOrg'] > 0)).astype('int8')
     df['dest_went_zero'] = ((df['newbalanceDest'] == 0) & (df['oldbalanceDest'] > 0)).astype('int8')
     
     return df
 
 def get_model_info():
-    """Get detailed information about models and their capabilities"""
     return {
         'xgb': {
             'name': 'XGBoost Classifier',
@@ -279,10 +234,8 @@ def get_model_info():
     }
 
 def explain_prediction(transaction_data, probabilities, model_name):
-    """Provide detailed explanation of fraud prediction"""
     explanations = []
     
-    # Risk level classification
     max_prob = max(probabilities.values()) if probabilities else 0
     
     if max_prob >= 0.8:
@@ -302,17 +255,14 @@ def explain_prediction(transaction_data, probabilities, model_name):
     explanations.append(f"*{risk_explanation}*")
     explanations.append("")
     
-    # Feature-based explanations
     explanations.append("**Key Risk Factors Analyzed:**")
     
-    # Transaction type analysis
     tx_type = transaction_data.get('type', [''])[0] if hasattr(transaction_data.get('type', ['']), '__getitem__') else transaction_data.get('type', '')
     if tx_type in ['TRANSFER', 'CASH_OUT']:
         explanations.append(f"• **Transaction Type**: {tx_type} (Higher risk category)")
     else:
         explanations.append(f"• **Transaction Type**: {tx_type} (Lower risk category)")
     
-    # Amount analysis
     amount = transaction_data.get('amount', [0])[0] if hasattr(transaction_data.get('amount', [0]), '__getitem__') else transaction_data.get('amount', 0)
     if amount >= 200000:
         explanations.append(f"• **Amount**: ${amount:,.2f} (High-value transaction)")
@@ -321,7 +271,6 @@ def explain_prediction(transaction_data, probabilities, model_name):
     else:
         explanations.append(f"• **Amount**: ${amount:,.2f} (Standard transaction)")
     
-    # Balance analysis
     old_bal = transaction_data.get('oldbalanceOrg', [0])[0] if hasattr(transaction_data.get('oldbalanceOrg', [0]), '__getitem__') else transaction_data.get('oldbalanceOrg', 0)
     new_bal = transaction_data.get('newbalanceOrig', [0])[0] if hasattr(transaction_data.get('newbalanceOrig', [0]), '__getitem__') else transaction_data.get('newbalanceOrig', 0)
     
@@ -332,7 +281,6 @@ def explain_prediction(transaction_data, probabilities, model_name):
     else:
         explanations.append("• **Balance Pattern**: Normal transaction flow")
     
-    # Flagged analysis
     is_flagged = transaction_data.get('isFlaggedFraud', [0])[0] if hasattr(transaction_data.get('isFlaggedFraud', [0]), '__getitem__') else transaction_data.get('isFlaggedFraud', 0)
     if is_flagged:
         explanations.append("• **System Flag**: Transaction flagged by internal systems")
@@ -340,10 +288,8 @@ def explain_prediction(transaction_data, probabilities, model_name):
     return "\n".join(explanations)
 
 def predict_fraud(models, df, threshold_lr=0.5, threshold_xgb=0.5):
-    """Make fraud predictions using available models"""
     results = {}
     
-    # Prepare features (exclude IDs and target if present)
     feature_cols = [c for c in df.columns if c not in ['nameOrig', 'nameDest', 'isFraud']]
     X = df[feature_cols]
     
@@ -351,7 +297,6 @@ def predict_fraud(models, df, threshold_lr=0.5, threshold_xgb=0.5):
         try:
             proba = model.predict_proba(X)[:, 1]
             
-            # Use appropriate threshold
             if 'lr' in model_name.lower():
                 threshold = threshold_lr
             else:
@@ -370,21 +315,17 @@ def predict_fraud(models, df, threshold_lr=0.5, threshold_xgb=0.5):
     return results
 
 def main():
-    # Header
     st.markdown('<h1 class="main-header">🛡️ Fraud Detection System</h1>', unsafe_allow_html=True)
     st.markdown("### Detect fraudulent financial transactions using machine learning")
     
-    # Sidebar
     st.sidebar.header("⚙️ Configuration")
     
-    # Load models
     models = load_models()
     
     if not models:
         st.error("❌ No trained models found. Please run the training notebook first and ensure models are saved in the 'models' directory.")
         return
     
-    # Model selection
     available_models = list(models.keys())
     selected_models = st.sidebar.multiselect(
         "Select Models to Use",
@@ -392,12 +333,10 @@ def main():
         default=available_models
     )
     
-    # Threshold configuration
     st.sidebar.subheader("🎯 Decision Thresholds")
     threshold_lr = st.sidebar.slider("Logistic Regression Threshold", 0.0, 1.0, 0.5, 0.01)
     threshold_xgb = st.sidebar.slider("XGBoost Threshold", 0.0, 1.0, 0.5, 0.01)
     
-    # Main content tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔍 Single Prediction", "📊 Batch Prediction", "📋 Data Preview", "📈 Model Comparison", "ℹ️ About"])
     
     with tab1:
@@ -408,7 +347,6 @@ def main():
         with col1:
             st.subheader("Transaction Details")
             
-            # Manual input form
             with st.form("transaction_form"):
                 step = st.number_input("Time Step", min_value=1, max_value=744, value=1)
                 
@@ -434,7 +372,6 @@ def main():
         
         with col2:
             if submitted:
-                # Create input dataframe
                 input_data = pd.DataFrame({
                     'step': [step],
                     'type': [transaction_type],
@@ -446,10 +383,8 @@ def main():
                     'isFlaggedFraud': [1 if is_flagged else 0]
                 })
                 
-                # Feature engineering
                 input_data = engineer_features(input_data)
                 
-                # Make predictions
                 selected_model_dict = {k: v for k, v in models.items() if k in selected_models}
                 results = predict_fraud(selected_model_dict, input_data, threshold_lr, threshold_xgb)
                 
@@ -460,7 +395,6 @@ def main():
                     pred = result['predictions'][0]
                     threshold = result['threshold']
                     
-                    # Display result
                     if pred == 1:
                         st.markdown(f"""
                         <div class="alert-fraud">
@@ -478,7 +412,6 @@ def main():
                         </div>
                         """, unsafe_allow_html=True)
                 
-                # Probability gauge
                 if results:
                     st.subheader("📊 Probability Visualization")
                     
@@ -519,13 +452,10 @@ def main():
                     fig.update_layout(height=400)
                     st.plotly_chart(fig, width='stretch')
                 
-                # Detailed Explanation Section
                 st.subheader("🔍 Detailed Analysis")
                 
-                # Get model information
                 model_info = get_model_info()
                 
-                # Create explanation tabs for each model
                 if len(results) > 1:
                     explanation_tabs = st.tabs([f"{name.upper()}" for name in results.keys()])
                     
@@ -533,7 +463,6 @@ def main():
                         with explanation_tabs[i]:
                             prob = result['probabilities'][0]
                             
-                            # Model-specific explanation
                             st.markdown("**Model Information:**")
                             if model_name in model_info:
                                 info = model_info[model_name]
@@ -543,11 +472,9 @@ def main():
                             
                             st.markdown("---")
                             
-                            # Prediction explanation
                             explanation = explain_prediction(input_data.to_dict('list'), {model_name: prob}, model_name)
                             st.markdown(explanation)
                             
-                            # Risk recommendations
                             st.markdown("**🛡️ Recommended Actions:**")
                             if prob >= 0.8:
                                 st.markdown("- **IMMEDIATE**: Block transaction and investigate")
@@ -564,7 +491,6 @@ def main():
                                 st.markdown("- **APPROVE**: Transaction appears legitimate")
                                 st.markdown("- **ROUTINE**: Standard processing recommended")
                 else:
-                    # Single model explanation
                     for model_name, result in results.items():
                         prob = result['probabilities'][0]
                         
@@ -585,7 +511,6 @@ def main():
     with tab2:
         st.header("Batch Transaction Analysis")
         
-        # File upload
         uploaded_file = st.file_uploader(
             "Upload CSV file with transaction data",
             type=['csv'],
@@ -594,27 +519,21 @@ def main():
         
         if uploaded_file is not None:
             try:
-                # Load data
                 df_batch = pd.read_csv(uploaded_file)
                 st.success(f"✅ Loaded {len(df_batch)} transactions")
                 
-                # Show data preview
                 st.subheader("Data Preview")
                 st.dataframe(df_batch.head())
                 
-                # Feature engineering
                 df_batch = engineer_features(df_batch)
                 
-                # Make predictions
                 selected_model_dict = {k: v for k, v in models.items() if k in selected_models}
                 
                 if st.button("🔍 Analyze Batch"):
                     results = predict_fraud(selected_model_dict, df_batch, threshold_lr, threshold_xgb)
                     
-                    # Store in session state for preview tab
                     st.session_state.last_batch_data = df_batch.copy()
                     
-                    # Results summary
                     st.subheader("📊 Batch Analysis Results")
                     
                     col1, col2, col3 = st.columns(3)
@@ -637,10 +556,8 @@ def main():
                                 f"{avg_prob:.4f}"
                             )
                     
-                    # Detailed results
                     st.subheader("Detailed Results")
                     
-                    # Add predictions to dataframe
                     df_results = df_batch.copy()
                     for model_name, result in results.items():
                         df_results[f'{model_name}_prob'] = result['probabilities']
@@ -648,7 +565,6 @@ def main():
                     
                     st.dataframe(df_results)
                     
-                    # Download link
                     csv = df_results.to_csv(index=False)
                     st.download_button(
                         label="📥 Download Results CSV",
@@ -660,20 +576,16 @@ def main():
             except Exception as e:
                 st.error(f"Error processing file: {e}")
         else:
-            # Show sample data option
             if st.button("📋 Use Sample Data"):
                 sample_data = create_sample_data()
                 st.subheader("Sample Data")
                 st.dataframe(sample_data)
                 
-                # Feature engineering
                 sample_data = engineer_features(sample_data)
                 
-                # Make predictions
                 selected_model_dict = {k: v for k, v in models.items() if k in selected_models}
                 results = predict_fraud(selected_model_dict, sample_data, threshold_lr, threshold_xgb)
                 
-                # Show results
                 st.subheader("Sample Results")
                 for model_name, result in results.items():
                     st.write(f"**{model_name.upper()}:**")
@@ -683,7 +595,6 @@ def main():
     with tab3:
         st.header("Data Preview and Analysis")
         
-        # Check if we have any loaded data
         data_source = st.radio(
             "Select data source to preview:",
             ["Sample Data", "Upload New File", "Recent Batch Data"]
@@ -694,13 +605,11 @@ def main():
             sample_data = create_sample_data()
             st.dataframe(sample_data, width='stretch')
             
-            # Show engineered features
             if st.button("Show Engineered Features"):
                 engineered_sample = engineer_features(sample_data.copy())
                 st.subheader("With Feature Engineering")
                 st.dataframe(engineered_sample, width='stretch')
                 
-                # Data insights
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Total Transactions", len(engineered_sample))
@@ -724,7 +633,6 @@ def main():
                 try:
                     preview_df = pd.read_csv(preview_file)
                     
-                    # Basic info
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Rows", len(preview_df))
@@ -738,11 +646,9 @@ def main():
                             total_volume = preview_df['amount'].sum()
                             st.metric("Total Volume", f"${total_volume:,.2f}")
                     
-                    # Data preview
                     st.subheader("Data Preview")
                     st.dataframe(preview_df.head(100), width='stretch')
                     
-                    # Column information
                     st.subheader("Column Information")
                     col_info = pd.DataFrame({
                         'Column': preview_df.columns,
@@ -753,20 +659,17 @@ def main():
                     })
                     st.dataframe(col_info, width='stretch')
                     
-                    # Data distribution for numeric columns
                     numeric_cols = preview_df.select_dtypes(include=[np.number]).columns
                     if len(numeric_cols) > 0:
                         st.subheader("Numeric Column Statistics")
                         st.dataframe(preview_df[numeric_cols].describe(), width='stretch')
                     
-                    # Feature engineering preview
                     if st.button("Preview Feature Engineering", key="preview_features"):
                         try:
                             engineered_preview = engineer_features(preview_df.copy())
                             st.subheader("After Feature Engineering")
                             st.dataframe(engineered_preview.head(20), width='stretch')
                             
-                            # Show new columns created
                             original_cols = set(preview_df.columns)
                             new_cols = set(engineered_preview.columns) - original_cols
                             if new_cols:
@@ -777,11 +680,10 @@ def main():
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
         
-        else:  # Recent Batch Data
+        else:
             st.subheader("Recent Batch Data")
             st.info("This feature will show the most recently processed batch data. Upload and process a batch file first to see data here.")
             
-            # You could store the last processed batch in session state
             if 'last_batch_data' in st.session_state:
                 st.dataframe(st.session_state.last_batch_data, width='stretch')
             else:
@@ -793,7 +695,6 @@ def main():
         if len(models) > 1:
             st.info("Load test data to compare model performance")
             
-            # Model info
             st.subheader("Available Models")
             
             model_info = {
@@ -952,7 +853,6 @@ def main():
         st.subheader("📊 Model Performance Metrics")
         st.info("Training in progress... Enhanced models with better calibration and multiple algorithms are being created. Check back in a few minutes for updated performance metrics.")
         
-        # Model training status
         if st.button("🔄 Check Training Status"):
             try:
                 models_dir = Path("models")
@@ -969,7 +869,6 @@ def main():
                     result_files = list(results_dir.glob("*.json"))
                     st.success(f"✅ {len(result_files)} result files found")
                     
-                    # Show latest results if available
                     if result_files:
                         latest_result = max(result_files, key=lambda x: x.stat().st_mtime)
                         st.info(f"Latest evaluation: {latest_result.name}")
