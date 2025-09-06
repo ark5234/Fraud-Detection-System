@@ -191,7 +191,7 @@ def main():
     threshold_xgb = st.sidebar.slider("XGBoost Threshold", 0.0, 1.0, 0.5, 0.01)
     
     # Main content tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["🔍 Single Prediction", "📊 Batch Prediction", "📈 Model Comparison", "ℹ️ About"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔍 Single Prediction", "📊 Batch Prediction", "📋 Data Preview", "📈 Model Comparison", "ℹ️ About"])
     
     with tab1:
         st.header("Single Transaction Analysis")
@@ -258,16 +258,16 @@ def main():
                         st.markdown(f"""
                         <div class="alert-fraud">
                         <strong>⚠️ {model_name.upper()}: FRAUD DETECTED</strong><br>
-                        Probability: {prob:.4f} (≥ {threshold})<br>
-                        Confidence: {prob*100:.1f}%
+                        Probability: {prob:.6f} (≥ {threshold})<br>
+                        Confidence: {prob*100:.3f}%
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown(f"""
                         <div class="alert-safe">
                         <strong>✅ {model_name.upper()}: LEGITIMATE</strong><br>
-                        Probability: {prob:.4f} (< {threshold})<br>
-                        Confidence: {(1-prob)*100:.1f}%
+                        Probability: {prob:.6f} (< {threshold})<br>
+                        Confidence: {(1-prob)*100:.3f}%
                         </div>
                         """, unsafe_allow_html=True)
                 
@@ -288,11 +288,12 @@ def main():
                             go.Indicator(
                                 mode="gauge+number",
                                 value=prob,
+                                number={'valueformat': '.6f'},
                                 domain={'x': [0, 1], 'y': [0, 1]},
                                 title={'text': f"Fraud Probability"},
                                 gauge={
                                     'axis': {'range': [None, 1]},
-                                    'bar': {'color': "darkred" if prob > 0.5 else "darkgreen"},
+                                    'bar': {'color': "darkred" if prob > result['threshold'] else "darkgreen"},
                                     'steps': [
                                         {'range': [0, 0.3], 'color': "lightgreen"},
                                         {'range': [0.3, 0.7], 'color': "yellow"},
@@ -339,6 +340,9 @@ def main():
                 
                 if st.button("🔍 Analyze Batch"):
                     results = predict_fraud(selected_model_dict, df_batch, threshold_lr, threshold_xgb)
+                    
+                    # Store in session state for preview tab
+                    st.session_state.last_batch_data = df_batch.copy()
                     
                     # Results summary
                     st.subheader("📊 Batch Analysis Results")
@@ -407,6 +411,113 @@ def main():
                     st.write(f"Predictions: {result['predictions']}")
     
     with tab3:
+        st.header("Data Preview and Analysis")
+        
+        # Check if we have any loaded data
+        data_source = st.radio(
+            "Select data source to preview:",
+            ["Sample Data", "Upload New File", "Recent Batch Data"]
+        )
+        
+        if data_source == "Sample Data":
+            st.subheader("Sample Transaction Data")
+            sample_data = create_sample_data()
+            st.dataframe(sample_data, use_container_width=True)
+            
+            # Show engineered features
+            if st.button("Show Engineered Features"):
+                engineered_sample = engineer_features(sample_data.copy())
+                st.subheader("With Feature Engineering")
+                st.dataframe(engineered_sample, use_container_width=True)
+                
+                # Data insights
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Transactions", len(engineered_sample))
+                with col2:
+                    avg_amount = engineered_sample['amount'].mean()
+                    st.metric("Average Amount", f"${avg_amount:,.2f}")
+                with col3:
+                    high_value = engineered_sample['is_high_value'].sum()
+                    st.metric("High Value Transactions", high_value)
+        
+        elif data_source == "Upload New File":
+            st.subheader("Upload Data for Preview")
+            preview_file = st.file_uploader(
+                "Choose CSV file for preview",
+                type=['csv'],
+                key="preview_upload",
+                help="Upload a CSV file to preview its structure and contents"
+            )
+            
+            if preview_file is not None:
+                try:
+                    preview_df = pd.read_csv(preview_file)
+                    
+                    # Basic info
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Rows", len(preview_df))
+                    with col2:
+                        st.metric("Columns", len(preview_df.columns))
+                    with col3:
+                        missing_pct = (preview_df.isnull().sum().sum() / (len(preview_df) * len(preview_df.columns))) * 100
+                        st.metric("Missing Data", f"{missing_pct:.1f}%")
+                    with col4:
+                        if 'amount' in preview_df.columns:
+                            total_volume = preview_df['amount'].sum()
+                            st.metric("Total Volume", f"${total_volume:,.2f}")
+                    
+                    # Data preview
+                    st.subheader("Data Preview")
+                    st.dataframe(preview_df.head(100), use_container_width=True)
+                    
+                    # Column information
+                    st.subheader("Column Information")
+                    col_info = pd.DataFrame({
+                        'Column': preview_df.columns,
+                        'Data Type': preview_df.dtypes,
+                        'Non-Null Count': preview_df.count(),
+                        'Null Count': preview_df.isnull().sum(),
+                        'Null Percentage': (preview_df.isnull().sum() / len(preview_df) * 100).round(2)
+                    })
+                    st.dataframe(col_info, use_container_width=True)
+                    
+                    # Data distribution for numeric columns
+                    numeric_cols = preview_df.select_dtypes(include=[np.number]).columns
+                    if len(numeric_cols) > 0:
+                        st.subheader("Numeric Column Statistics")
+                        st.dataframe(preview_df[numeric_cols].describe(), use_container_width=True)
+                    
+                    # Feature engineering preview
+                    if st.button("Preview Feature Engineering", key="preview_features"):
+                        try:
+                            engineered_preview = engineer_features(preview_df.copy())
+                            st.subheader("After Feature Engineering")
+                            st.dataframe(engineered_preview.head(20), use_container_width=True)
+                            
+                            # Show new columns created
+                            original_cols = set(preview_df.columns)
+                            new_cols = set(engineered_preview.columns) - original_cols
+                            if new_cols:
+                                st.info(f"New features created: {', '.join(sorted(new_cols))}")
+                        except Exception as e:
+                            st.error(f"Error in feature engineering: {e}")
+                
+                except Exception as e:
+                    st.error(f"Error reading file: {e}")
+        
+        else:  # Recent Batch Data
+            st.subheader("Recent Batch Data")
+            st.info("This feature will show the most recently processed batch data. Upload and process a batch file first to see data here.")
+            
+            # You could store the last processed batch in session state
+            if 'last_batch_data' in st.session_state:
+                st.dataframe(st.session_state.last_batch_data, use_container_width=True)
+            else:
+                st.warning("No recent batch data available. Process a batch file first.")
+    
+    with tab4:
         st.header("Model Performance Comparison")
         
         if len(models) > 1:
@@ -427,7 +538,7 @@ def main():
         else:
             st.warning("Load multiple models to enable comparison")
     
-    with tab4:
+    with tab5:
         st.header("About This Application")
         
         st.markdown("""
