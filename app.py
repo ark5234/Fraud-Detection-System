@@ -310,7 +310,7 @@ def main():
                         )
                     
                     fig.update_layout(height=400)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
     
     with tab2:
         st.header("Batch Transaction Analysis")
@@ -422,13 +422,13 @@ def main():
         if data_source == "Sample Data":
             st.subheader("Sample Transaction Data")
             sample_data = create_sample_data()
-            st.dataframe(sample_data, use_container_width=True)
+            st.dataframe(sample_data, width='stretch')
             
             # Show engineered features
             if st.button("Show Engineered Features"):
                 engineered_sample = engineer_features(sample_data.copy())
                 st.subheader("With Feature Engineering")
-                st.dataframe(engineered_sample, use_container_width=True)
+                st.dataframe(engineered_sample, width='stretch')
                 
                 # Data insights
                 col1, col2, col3 = st.columns(3)
@@ -470,7 +470,7 @@ def main():
                     
                     # Data preview
                     st.subheader("Data Preview")
-                    st.dataframe(preview_df.head(100), use_container_width=True)
+                    st.dataframe(preview_df.head(100), width='stretch')
                     
                     # Column information
                     st.subheader("Column Information")
@@ -481,20 +481,20 @@ def main():
                         'Null Count': preview_df.isnull().sum(),
                         'Null Percentage': (preview_df.isnull().sum() / len(preview_df) * 100).round(2)
                     })
-                    st.dataframe(col_info, use_container_width=True)
+                    st.dataframe(col_info, width='stretch')
                     
                     # Data distribution for numeric columns
                     numeric_cols = preview_df.select_dtypes(include=[np.number]).columns
                     if len(numeric_cols) > 0:
                         st.subheader("Numeric Column Statistics")
-                        st.dataframe(preview_df[numeric_cols].describe(), use_container_width=True)
+                        st.dataframe(preview_df[numeric_cols].describe(), width='stretch')
                     
                     # Feature engineering preview
                     if st.button("Preview Feature Engineering", key="preview_features"):
                         try:
                             engineered_preview = engineer_features(preview_df.copy())
                             st.subheader("After Feature Engineering")
-                            st.dataframe(engineered_preview.head(20), use_container_width=True)
+                            st.dataframe(engineered_preview.head(20), width='stretch')
                             
                             # Show new columns created
                             original_cols = set(preview_df.columns)
@@ -513,7 +513,7 @@ def main():
             
             # You could store the last processed batch in session state
             if 'last_batch_data' in st.session_state:
-                st.dataframe(st.session_state.last_batch_data, use_container_width=True)
+                st.dataframe(st.session_state.last_batch_data, width='stretch')
             else:
                 st.warning("No recent batch data available. Process a batch file first.")
     
