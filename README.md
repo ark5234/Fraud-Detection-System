@@ -4,15 +4,15 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **🛡️ An advanced machine learning system for real-time fraud detection in financial transactions**
+> **An advanced machine learning system for real-time fraud detection in financial transactions**
 
-## 🌟 Live Demo
+## Live Demo
 
-**[🚀 Try the Live Application](https://fraud-detection-web.streamlit.app/)**
+**[Try the Live Application](https://fraud-detection-web.streamlit.app)**
 
 Experience the fraud detection system in action with interactive predictions, detailed explanations, and comprehensive risk assessment.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -25,7 +25,7 @@ Experience the fraud detection system in action with interactive predictions, de
 - [Contributing](#contributing)
 - [License](#license)
 
-## 🎯 Overview
+## Overview
 
 The Fraud Detection System is a comprehensive machine learning solution designed to identify potentially fraudulent financial transactions in real-time. Built with enterprise-grade accuracy and deployed as an interactive web application, it serves financial institutions, fintech companies, and researchers working on fraud prevention.
 
@@ -37,40 +37,43 @@ The Fraud Detection System is a comprehensive machine learning solution designed
 - **Model Transparency**: Detailed explanations of prediction rationale
 - **Multiple Algorithms**: Ensemble of calibrated machine learning models
 
-## ✨ Features
+## Features
 
-### 🔍 **Single Transaction Analysis**
+### **Single Transaction Analysis**
 - Interactive form for manual transaction input
 - Real-time fraud probability calculation
 - Detailed risk factor analysis
 - Visual probability gauges with threshold indicators
 - Specific recommendations for each risk level
 
-### 📊 **Batch Processing**
+### **Batch Processing**
 - CSV file upload for multiple transactions
 - Bulk fraud analysis with exportable results
 - Summary statistics and risk distribution
 - Interactive data visualization
 
-### 📋 **Data Exploration**
+### **Data Exploration**
+
 - Preview uploaded datasets
 - Feature engineering transparency
 - Data quality assessment
 - Interactive data filtering and analysis
 
-### 📈 **Model Comparison**
+### **Model Comparison**
+
 - Side-by-side model performance analysis
 - Consensus predictions across algorithms
 - Confidence interval visualization
 - Model-specific insights and recommendations
 
-### 🤖 **Advanced ML Pipeline**
+### **Advanced ML Pipeline**
+
 - **Multiple Algorithms**: Logistic Regression, Random Forest, XGBoost, Neural Networks
 - **Ensemble Methods**: Voting classifiers for improved accuracy
 - **Probability Calibration**: Platt scaling and isotonic regression
 - **Feature Engineering**: 25+ derived features from transaction data
 
-## 🏗️ Architecture
+## Architecture
 
 ### Machine Learning Stack
 
@@ -102,7 +105,7 @@ The Fraud Detection System is a comprehensive machine learning solution designed
 - **Deployment**: Streamlit Cloud with automatic model training
 - **Data**: 6.3M+ financial transactions for training
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
@@ -113,12 +116,14 @@ The Fraud Detection System is a comprehensive machine learning solution designed
 ### Local Setup
 
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/ark5234/Fraud-Detection-System.git
    cd Fraud-Detection-System
    ```
 
 2. **Create Virtual Environment**
+
    ```bash
    python -m venv fraud_detection_env
    
@@ -130,16 +135,19 @@ The Fraud Detection System is a comprehensive machine learning solution designed
    ```
 
 3. **Install Dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Run the Application**
+
    ```bash
    streamlit run app.py
    ```
 
 5. **Access the Application**
+
    Open your browser and navigate to `http://localhost:8501`
 
 ### Docker Deployment (Optional)
@@ -157,7 +165,7 @@ EXPOSE 8501
 CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
 ```
 
-## 💻 Usage
+## Usage
 
 ### Web Interface
 
@@ -202,9 +210,10 @@ print(f"Fraud Probability: {fraud_probability:.4f}")
 print(f"Classification: {'FRAUD' if is_fraud else 'LEGITIMATE'}")
 ```
 
-## 📊 Model Performance
+## Model Performance
 
 ### Training Dataset
+
 - **Size**: 6.3+ million financial transactions
 - **Features**: 25+ engineered features from transaction data
 - **Classes**: Binary (Fraud vs. Legitimate)
@@ -223,37 +232,44 @@ print(f"Classification: {'FRAUD' if is_fraud else 'LEGITIMATE'}")
 
 | Risk Level | Probability Range | Action Required | Response Time |
 |------------|-------------------|-----------------|---------------|
-| 🔴 **HIGH** | ≥ 80% | Block transaction, investigate | Immediate |
-| 🟡 **MEDIUM** | 50-79% | Manual review, additional auth | < 5 minutes |
-| 🟠 **LOW** | 20-49% | Enhanced monitoring | Standard |
-| 🟢 **MINIMAL** | < 20% | Standard processing | Normal |
+| **HIGH** | ≥ 80% | Block transaction, investigate | Immediate |
+| **MEDIUM** | 50-79% | Manual review, additional auth | < 5 minutes |
+| **LOW** | 20-49% | Enhanced monitoring | Standard |
+| **MINIMAL** | < 20% | Standard processing | Normal |
 
-## 📚 API Reference
+## API Reference
 
 ### Core Functions
 
 #### `load_models()`
+
 Loads trained machine learning models with automatic fallback training.
 
 #### `engineer_features(df)`
+
 Applies comprehensive feature engineering to transaction data.
 
 **Parameters:**
+
 - `df` (pandas.DataFrame): Raw transaction data
 
 **Returns:**
+
 - pandas.DataFrame: Engineered features ready for model input
 
 #### `predict_fraud(models, df, threshold_lr=0.5, threshold_xgb=0.5)`
+
 Makes fraud predictions using ensemble of models.
 
 **Parameters:**
+
 - `models` (dict): Dictionary of trained models
 - `df` (pandas.DataFrame): Processed transaction data
 - `threshold_lr` (float): Decision threshold for logistic regression
 - `threshold_xgb` (float): Decision threshold for tree-based models
 
 **Returns:**
+
 - dict: Prediction results with probabilities and classifications
 
 ### Configuration
@@ -277,44 +293,44 @@ RISK_LEVELS = {
 }
 ```
 
-## 📁 Project Structure
+## Project Structure
 
-```
+```text
 Fraud-Detection-System/
-├── 🏠 app.py                          # Main Streamlit application
-├── ⚙️ config.py                       # Configuration settings
-├── 📋 requirements.txt                # Python dependencies
-├── 📖 README.md                       # Project documentation
-├── 📄 LICENSE                         # MIT license
-├── 🚫 .gitignore                      # Git ignore patterns
+├── app.py                          # Main Streamlit application
+├── config.py                       # Configuration settings
+├── requirements.txt                # Python dependencies
+├── README.md                       # Project documentation
+├── LICENSE                         # MIT license
+├── .gitignore                      # Git ignore patterns
 │
-├── 📊 data/                           # Data storage
-│   ├── 🗃️ raw/                        # Original datasets
-│   │   └── Fraud.csv                 # Primary fraud dataset
-│   └── 📚 Data Dictionary.txt         # Data documentation
+├── data/                           # Data storage
+│   ├── raw/                        # Original datasets
+│   │   └── Fraud.csv               # Primary fraud dataset
+│   └── Data Dictionary.txt         # Data documentation
 │
-├── 🤖 models/                         # Trained models
-│   ├── 📦 legacy/                     # Archived model versions
-│   └── *.joblib                      # Current model files
+├── models/                         # Trained models
+│   ├── legacy/                     # Archived model versions
+│   └── *.joblib                    # Current model files
 │
-├── 📓 notebooks/                      # Jupyter notebooks
+├── notebooks/                      # Jupyter notebooks
 │   └── fraud_detection_case_study.ipynb # Research & analysis
 │
-├── 🔧 src/                           # Source code
-│   └── model_training.py             # Comprehensive training pipeline
+├── src/                           # Source code
+│   └── model_training.py          # Comprehensive training pipeline
 │
-├── 🛠️ scripts/                       # Utility scripts
-│   ├── quick_train.py                # Fast model training
-│   └── minimal_train.py              # Basic model training
+├── scripts/                       # Utility scripts
+│   ├── quick_train.py             # Fast model training
+│   └── minimal_train.py           # Basic model training
 │
-├── 📈 results/                       # Training results
-│   └── model_evaluation_*.json       # Performance metrics
+├── results/                       # Training results
+│   └── model_evaluation_*.json    # Performance metrics
 │
-└── 📚 docs/                          # Documentation
-    └── PROJECT_STRUCTURE.md          # Detailed structure guide
+└── docs/                          # Documentation
+    └── PROJECT_STRUCTURE.md       # Detailed structure guide
 ```
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions to improve the fraud detection system! Here's how you can contribute:
 
@@ -342,11 +358,12 @@ We welcome contributions to improve the fraud detection system! Here's how you c
 - Include unit tests for new features
 - Update documentation for any API changes
 
-## 📊 Benchmarks & Comparisons
+## Benchmarks & Comparisons
 
 ### Industry Comparison
 
 Our fraud detection system achieves:
+
 - **99.95% ROC-AUC** - Industry leading performance
 - **<50ms prediction time** - Real-time capable
 - **92% precision** - Minimal false positives
@@ -355,11 +372,12 @@ Our fraud detection system achieves:
 ### Academic Benchmarks
 
 Compared to academic fraud detection papers:
+
 - Outperforms baseline models by 15-20%
 - Competitive with state-of-the-art ensemble methods
 - Superior calibration accuracy for probability estimates
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -375,24 +393,24 @@ A: Consider using only the fastest models (Logistic Regression) for real-time sc
 **Q: High false positive rate**
 A: Adjust decision thresholds in the sidebar configuration based on your risk tolerance.
 
-## 📞 Support
+## Support
 
 - **Documentation**: [Project Wiki](https://github.com/ark5234/Fraud-Detection-System/wiki)
 - **Issues**: [GitHub Issues](https://github.com/ark5234/Fraud-Detection-System/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/ark5234/Fraud-Detection-System/discussions)
 
-## 📜 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Dataset**: Based on synthetic financial transaction data
 - **ML Libraries**: scikit-learn, XGBoost, LightGBM communities
 - **Visualization**: Plotly development team
 - **Deployment**: Streamlit for excellent deployment platform
 
-## 🏆 Citations
+## Citations
 
 If you use this fraud detection system in your research or commercial application, please cite:
 
@@ -408,6 +426,6 @@ If you use this fraud detection system in your research or commercial applicatio
 
 ---
 
-**[🚀 Experience the Live Demo](https://fraud-detection-web.streamlit.app/)**
+**[Experience the Live Demo](https://fraud-detection-web.streamlit.app/)**
 
-*Built with ❤️ for safer financial transactions*
+*Built for safer financial transactions*
